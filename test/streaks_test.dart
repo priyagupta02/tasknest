@@ -90,6 +90,64 @@ void main() {
     });
   });
 
+  group('longestStreak', () {
+    test('finds the longest run anywhere in history', () {
+      final completions = [
+        // A 2-day run in June.
+        DateTime(2026, 6, 10),
+        DateTime(2026, 6, 11),
+        // A 4-day run later that month — the personal best.
+        DateTime(2026, 6, 20),
+        DateTime(2026, 6, 21),
+        DateTime(2026, 6, 22),
+        DateTime(2026, 6, 23),
+        // Today, alone.
+        DateTime(2026, 7, 4),
+      ];
+
+      expect(longestStreak(completions), 4);
+    });
+
+    test('can exceed the current streak after a reset', () {
+      final now = DateTime(2026, 7, 4, 12, 0);
+      final completions = [
+        DateTime(2026, 6, 28),
+        DateTime(2026, 6, 29),
+        DateTime(2026, 6, 30),
+        // 1-3 July missed: the current streak restarted today.
+        DateTime(2026, 7, 4),
+      ];
+
+      expect(currentStreak(completions, now: now), 1);
+      expect(longestStreak(completions), 3);
+    });
+
+    test('collapses same-day duplicates', () {
+      final completions = [
+        DateTime(2026, 7, 3, 8, 0),
+        DateTime(2026, 7, 3, 20, 0),
+        DateTime(2026, 7, 4, 9, 0),
+      ];
+
+      expect(longestStreak(completions), 2);
+    });
+
+    test('counts runs across month and year boundaries', () {
+      final completions = [
+        DateTime(2026, 12, 30),
+        DateTime(2026, 12, 31),
+        DateTime(2027, 1, 1),
+        DateTime(2027, 1, 2),
+      ];
+
+      expect(longestStreak(completions), 4);
+    });
+
+    test('is zero with no completions', () {
+      expect(longestStreak(const []), 0);
+    });
+  });
+
   group('withCompletion', () {
     test('is idempotent for the same calendar day', () {
       final morning = DateTime(2026, 7, 4, 9, 0);
@@ -122,7 +180,7 @@ void main() {
     });
   });
 
-  group('dateOnly / previousDay', () {
+  group('calendar-day helpers', () {
     test('dateOnly strips time but keeps the local date', () {
       expect(dateOnly(DateTime(2026, 7, 4, 23, 59, 59)), DateTime(2026, 7, 4));
       expect(dateOnly(DateTime(2026, 7, 4, 0, 0, 1)), DateTime(2026, 7, 4));
@@ -131,6 +189,11 @@ void main() {
     test('previousDay rolls over month and year boundaries', () {
       expect(previousDay(DateTime(2026, 3, 1)), DateTime(2026, 2, 28));
       expect(previousDay(DateTime(2027, 1, 1)), DateTime(2026, 12, 31));
+    });
+
+    test('nextDay rolls over month and year boundaries', () {
+      expect(nextDay(DateTime(2026, 2, 28)), DateTime(2026, 3, 1));
+      expect(nextDay(DateTime(2026, 12, 31)), DateTime(2027, 1, 1));
     });
   });
 }

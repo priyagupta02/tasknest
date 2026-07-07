@@ -23,6 +23,10 @@ bool isSameDay(DateTime a, DateTime b) =>
 DateTime previousDay(DateTime day) =>
     DateTime(day.year, day.month, day.day - 1);
 
+/// The calendar day after [day], with the same rollover guarantees as
+/// [previousDay].
+DateTime nextDay(DateTime day) => DateTime(day.year, day.month, day.day + 1);
+
 /// Whether [completions] contains an entry on the same calendar day as [day].
 bool isCompletedOn(Iterable<DateTime> completions, DateTime day) =>
     completions.any((c) => isSameDay(c, day));
@@ -47,6 +51,34 @@ int currentStreak(Iterable<DateTime> completions, {required DateTime now}) {
     cursor = previousDay(cursor);
   }
   return streak;
+}
+
+/// The longest run of consecutive local calendar days anywhere in
+/// [completions] — the habit's all-time personal best.
+///
+/// Unlike [currentStreak] this is independent of `now`: past runs still
+/// count after the streak has been broken. Duplicate completions on the
+/// same day are collapsed, and month/year boundaries are handled by the
+/// calendar arithmetic in [nextDay].
+int longestStreak(Iterable<DateTime> completions) {
+  final days = completions.map(dateOnly).toSet();
+
+  var longest = 0;
+  for (final day in days) {
+    if (days.contains(previousDay(day))) {
+      continue; // Not the start of a run.
+    }
+    var cursor = day;
+    var length = 0;
+    while (days.contains(cursor)) {
+      length++;
+      cursor = nextDay(cursor);
+    }
+    if (length > longest) {
+      longest = length;
+    }
+  }
+  return longest;
 }
 
 /// Returns [completions] with [now]'s calendar day added.

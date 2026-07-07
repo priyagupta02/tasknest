@@ -3,7 +3,8 @@ import 'package:flutter/material.dart';
 import '../models/habit.dart';
 import 'animated_check.dart';
 
-/// A habit row with an animated check and a streak-flame counter.
+/// A habit row with an animated check, a streak-flame counter and the
+/// habit's all-time best streak.
 class HabitTile extends StatelessWidget {
   const HabitTile({
     super.key,
@@ -25,6 +26,9 @@ class HabitTile extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final done = habit.isDoneOn(now);
     final streak = habit.streak(now);
+    final best = habit.bestStreak();
+    final subtitleStyle =
+        TextStyle(fontSize: 12, color: scheme.onSurfaceVariant);
 
     return Card(
       child: ListTile(
@@ -41,10 +45,22 @@ class HabitTile extends StatelessWidget {
           ),
           child: Text(habit.name),
         ),
-        subtitle: Text(
-          'Every day',
-          style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
-        ),
+        subtitle: best > 1
+            ? Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text('Every day', style: subtitleStyle),
+                  const SizedBox(width: 8),
+                  Icon(
+                    Icons.emoji_events_rounded,
+                    size: 13,
+                    color: scheme.outline,
+                  ),
+                  const SizedBox(width: 2),
+                  Text('Best $best', style: subtitleStyle),
+                ],
+              )
+            : Text('Every day', style: subtitleStyle),
         trailing: StreakBadge(streak: streak),
       ),
     );

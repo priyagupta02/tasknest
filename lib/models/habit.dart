@@ -24,6 +24,9 @@ class Habit extends HiveObject {
   /// Current streak length as of [now].
   int streak(DateTime now) => streaks.currentStreak(completedDays, now: now);
 
+  /// All-time longest streak (personal best), independent of the clock.
+  int bestStreak() => streaks.longestStreak(completedDays);
+
   /// Whether the habit has been completed on [now]'s calendar day.
   bool isDoneOn(DateTime now) => streaks.isCompletedOn(completedDays, now);
 
