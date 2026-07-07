@@ -73,17 +73,18 @@ class _AllTasksScreenState extends State<AllTasksScreen> {
     final to = _insertionIndexFor(task);
     _tasks.insert(to, task);
 
-    if (from == to) {
-      setState(() {});
-      return;
+    if (from != to) {
+      // Animate the move: shrink out of the old slot, grow into the new one.
+      _listKey.currentState?.removeItem(
+        from,
+        (context, animation) => _GhostSlot(animation: animation, task: task),
+        duration: _moveDuration,
+      );
+      _listKey.currentState?.insertItem(to, duration: _moveDuration);
     }
-    // Animate the move: shrink out of the old slot, grow into the new one.
-    _listKey.currentState?.removeItem(
-      from,
-      (context, animation) => _GhostSlot(animation: animation, task: task),
-      duration: _moveDuration,
-    );
-    _listKey.currentState?.insertItem(to, duration: _moveDuration);
+    // Rebuild so everything derived from [_tasks] (the empty-state overlay,
+    // the app-bar action) stays in sync with the new done state.
+    setState(() {});
   }
 
   void _removeAt(int index, {required bool deleteFromBox}) {
@@ -101,6 +102,7 @@ class _AllTasksScreenState extends State<AllTasksScreen> {
         SnackBar(content: Text('Deleted "$title"')),
       );
     }
+    setState(() {});
   }
 
   void _completeAt(int index) {
@@ -113,12 +115,75 @@ class _AllTasksScreenState extends State<AllTasksScreen> {
     final to = _insertionIndexFor(task);
     _tasks.insert(to, task);
     _listKey.currentState?.insertItem(to, duration: _insertDuration);
+    setState(() {});
+  }
+
+  /// Deletes every completed task after a confirmation.
+  ///
+  /// Indices are removed highest-first so each index handed to
+  /// [AnimatedListState.removeItem] is still valid after the removals above
+  /// it; the outgoing tiles animate away as non-interactive [_GhostSlot]s,
+  /// just like moves.
+  Future<void> _clearCompleted() async {
+    final messenger = ScaffoldMessenger.of(context);
+    final count = _tasks.where((t) => t.done).length;
+    final label = count == 1 ? '1 completed task' : '$count completed tasks';
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Clear $label?'),
+        content: const Text(
+          'This permanently deletes them — open tasks are untouched.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Clear'),
+          ),
+        ],
+      ),
+    );
+    if (!(confirmed ?? false) || !mounted) {
+      return;
+    }
+
+    setState(() {
+      for (var i = _tasks.length - 1; i >= 0; i--) {
+        final task = _tasks[i];
+        if (!task.done) {
+          continue;
+        }
+        _tasks.removeAt(i);
+        _listKey.currentState?.removeItem(
+          i,
+          (context, animation) =>
+              _GhostSlot(animation: animation, task: task),
+          duration: _moveDuration,
+        );
+        task.delete();
+      }
+    });
+    messenger.showSnackBar(SnackBar(content: Text('Cleared $label')));
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('All tasks')),
+      appBar: AppBar(
+        title: const Text('All tasks'),
+        actions: [
+          IconButton(
+            onPressed: _tasks.any((t) => t.done) ? _clearCompleted : null,
+            tooltip: 'Clear completed',
+            icon: const Icon(Icons.delete_sweep_rounded),
+          ),
+        ],
+      ),
       floatingActionButton: FloatingActionButton(
         heroTag: 'fab-all-tasks',
         onPressed: _addTask,
